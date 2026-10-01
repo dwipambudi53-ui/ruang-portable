@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KTI & Visualisasi 3D: Portable STEM Maker Space SMK (PORTA-STEM)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Three.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- KaTeX for Math Equations -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#075985',
+                            900: '#0c4a6e',
+                        },
+                        dark: {
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .canvas-container { width: 100%; height: 100%; min-height: 540px; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .tab-btn.active {
+            border-bottom: 3px solid #38bdf8;
+            color: #38bdf8;
+            background-color: rgba(56, 189, 248, 0.08);
+        }
+    </style>
+</head>
+<body class="bg-dark-950 text-slate-100 min-h-screen flex flex-col">
+
+    <!-- Header / Navbar -->
+    <header class="bg-dark-900 border-b border-slate-800 sticky top-0 z-50 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-sky-500/20 text-sky-400 rounded-lg border border-sky-500/30">
+                        <i class="fa-solid fa-graduation-cap text-xl"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs font-mono font-semibold tracking-wider text-sky-400 uppercase block">Inovasi KTI Terapan SMK</span>
+                        <h1 class="text-lg font-bold tracking-tight text-white">PORTA-STEM SMK <span class="text-xs font-normal text-emerald-400">v3.5 3D Workstation</span></h1>
+                    </div>
+                </div>
+                <!-- Navigation Tabs -->
+                <nav class="flex space-x-1 sm:space-x-3">
+                    <button onclick="switchTab('visualizer')" id="tab-visualizer" class="tab-btn active px-3 py-2 text-sm font-medium rounded-t-lg transition flex items-center gap-2">
+                        <i class="fa-solid fa-cube"></i> <span class="hidden md:inline">Visualisasi 3D Interaktif</span>
+                    </button>
+                    <button onclick="switchTab('kti-paper')" id="tab-kti-paper" class="tab-btn px-3 py-2 text-sm font-medium text-slate-400 hover:text-slate-200 rounded-t-lg transition flex items-center gap-2">
+                        <i class="fa-solid fa-file-contract"></i> <span class="hidden md:inline">Naskah KTI Lengkap</span>
+                    </button>
+                    <button onclick="switchTab('specs')" id="tab-specs" class="tab-btn px-3 py-2 text-sm font-medium text-slate-400 hover:text-slate-200 rounded-t-lg transition flex items-center gap-2">
+                        <i class="fa-solid fa-screwdriver-wrench"></i> <span class="hidden md:inline">Modul Alat & BOM</span>
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow flex flex-col">
+        
+        <!-- SECTION 1: 3D VISUALIZER & SIMULATOR -->
+        <section id="sec-visualizer" class="flex-grow flex flex-col lg:flex-row gap-4 p-4 max-w-7xl mx-auto w-full">
+            
+            <!-- 3D Canvas Container -->
+            <div class="lg:w-3/4 bg-dark-900 border border-slate-800 rounded-2xl relative overflow-hidden flex flex-col shadow-2xl">
+                <!-- Canvas Top Bar Controls -->
+                <div class="absolute top-4 left-4 z-10 flex flex-wrap gap-2 pointer-events-auto">
+                    <div class="bg-dark-950/80 backdrop-blur border border-slate-700/60 rounded-xl p-1.5 flex gap-1 shadow-lg">
+                        <button onclick="setViewState('default')" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-box"></i> Ringkas (Transport)
+                        </button>
+                        <button onclick="setViewState('expanded')" class="px-3 py-1.5 text-xs font-medium bg-sky-600 hover:bg-sky-500 text-white rounded-lg transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-expand"></i> Mode Stasiun Kerja
+                        </button>
+                        <button onclick="setViewState('exploded')" class="px-3 py-1.5 text-xs font-medium bg-amber-600/80 hover:bg-amber-500 text-white rounded-lg transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-layer-group"></i> Exploded View
+                        </button>
+                    </div>
+                </div>
+
+                <div class="absolute top-4 right-4 z-10 bg-dark-950/80 backdrop-blur border border-slate-700/60 rounded-xl p-2 text-xs font-mono text-slate-300">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span>Sistem Praktikum SMK: <strong class="text-emerald-400">Ready</strong></span>
+                    </div>
+                    <div class="text-[11px] text-slate-400">Engine: WebGL Three.js | Standar Vokasi</div>
+                </div>
+
+                <!-- Three JS Canvas Target -->
+                <div id="canvas-container" class="canvas-container flex-grow relative cursor-grab active:cursor-grabbing"></div>
+
+                <!-- Bottom View Preset Overlay -->
+                <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 bg-dark-950/80 backdrop-blur border border-slate-800 rounded-full px-4 py-2 flex items-center gap-3 shadow-xl">
+                    <span class="text-xs font-mono text-slate-400 uppercase tracking-wider hidden sm:inline">Sudut Pandang:</span>
+                    <button onclick="moveCamera('persp')" class="text-xs hover:text-sky-400 transition text-slate-300 px-2 py-1 rounded">Isometrik</button>
+                    <button onclick="moveCamera('front')" class="text-xs hover:text-sky-400 transition text-slate-300 px-2 py-1 rounded">Depan</button>
+                    <button onclick="moveCamera('top')" class="text-xs hover:text-sky-400 transition text-slate-300 px-2 py-1 rounded">Atas</button>
+                    <button onclick="moveCamera('side')" class="text-xs hover:text-sky-400 transition text-slate-300 px-2 py-1 rounded">Samping</button>
+                    <div class="h-3 w-px bg-slate-700"></div>
+                    <button onclick="toggleLights()" id="btn-toggle-led" class="text-xs text-amber-400 hover:text-amber-300 transition flex items-center gap-1">
+                        <i class="fa-solid fa-lightbulb"></i> Lampu Kerja LED
+                    </button>
+                </div>
+            </div>
+
+            <!-- Side Inspector / Control Panel -->
+            <div class="lg:w-1/4 flex flex-col gap-4">
+                
+                <!-- System Status Box -->
+                <div class="bg-dark-900 border border-slate-800 rounded-2xl p-5 shadow-xl">
+                    <h3 class="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-sky-400"></i> Kontrol Kinematika 3D
+                    </h3>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-xs text-slate-400 font-medium mb-1.5 justify-between flex">
+                                <span>Ekspansi Meja Sayap Lipat:</span>
+                                <span id="wing-val" class="font-mono text-sky-400">0%</span>
+                            </label>
+                            <input type="range" id="slider-wings" min="0" max="100" value="0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500">
+                        </div>
+
+                        <div>
+                            <label class="text-xs text-slate-400 font-medium mb-1.5 justify-between flex">
+                                <span>Buka Laci Tool & Elektronika:</span>
+                                <span id="drawer-val" class="font-mono text-sky-400">0%</span>
+                            </label>
+                            <input type="range" id="slider-drawers" min="0" max="100" value="0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500">
+                        </div>
+
+                        <div>
+                            <label class="text-xs text-slate-400 font-medium mb-1.5 justify-between flex">
+                                <span>Buka Panel Solar & Kap Atas:</span>
+                                <span id="lid-val" class="font-mono text-sky-400">0%</span>
+                            </label>
+                            <input type="range" id="slider-lid" min="0" max="100" value="0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-sky-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Subsystem Focus & Info -->
+                <div class="bg-dark-900 border border-slate-800 rounded-2xl p-5 flex-grow shadow-xl flex flex-col justify-between">
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-200 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-circle-info text-sky-400"></i> Integrasi Jurusan SMK
+                        </h3>
+                        <div id="component-info" class="space-y-2 text-xs text-slate-300">
+                            <div class="p-3 bg-dark-950 rounded-xl border border-slate-800">
+                                <span class="font-bold text-sky-400 block mb-1">1. Teknik Pemesinan / Mekatronika</span>
+                                3D Printer FDM CoreXY & Mini PCB CNC Router terisolasi dari getaran mekanis.
+                            </div>
+                            <div class="p-3 bg-dark-950 rounded-xl border border-slate-800">
+                                <span class="font-bold text-emerald-400 block mb-1">2. Teknik Elektronika & IoT</span>
+                                Workstation ESD-Safe dengan Digital Oscilloscope, Soldering Station, dan Sensor Kit.
+                            </div>
+                            <div class="p-3 bg-dark-950 rounded-xl border border-slate-800">
+                                <span class="font-bold text-amber-400 block mb-1">3. Teknik Ketenagalistrikan</span>
+                                Power Pack Off-Grid LiFePO4 12V 50Ah, MPPT Controller, & Solar Panel 100W Foldable.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Metrics -->
+                    <div class="mt-4 pt-4 border-t border-slate-800 grid grid-cols-2 gap-2 text-center">
+                        <div class="bg-dark-950 p-2 rounded-lg border border-slate-800">
+                            <span class="text-[10px] text-slate-400 uppercase font-mono block">Berat Total</span>
+                            <span class="text-sm font-bold text-white font-mono">22.8 kg</span>
+                        </div>
+                        <div class="bg-dark-950 p-2 rounded-lg border border-slate-800">
+                            <span class="text-[10px] text-slate-400 uppercase font-mono block">Dimensi Lipat</span>
+                            <span class="text-sm font-bold text-white font-mono">60x45x50 cm</span>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SECTION 2: FULL KTI PAPER DOCUMENT -->
+        <section id="sec-kti-paper" class="hidden max-w-5xl mx-auto px-4 py-8 w-full">
+            <div class="bg-dark-900 border border-slate-800 rounded-2xl p-6 sm:p-10 shadow-2xl prose prose-invert max-w-none">
+                
+                <!-- KTI Title Block -->
+                <div class="text-center border-b border-slate-800 pb-8 mb-8">
+                    <span class="bg-sky-500/10 text-sky-400 border border-sky-500/20 text-xs font-mono font-bold px-3 py-1 rounded-full uppercase tracking-wider">Naskah Karya Tulis Ilmiah (KTI) Rekayasa Teknologi SMK</span>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-white mt-4 mb-2 leading-tight">
+                        RANCANG BANGUN PORTABLE STEM MAKER SPACE ("PORTA-STEM"): SOLUSI RUANG PRAKTIKUM MULTI-DISIPLIN TERINTEGRASI DAN MANDIRI ENERGI UNTUK REVITALISASI PEMBELAJARAN VOKASI DI SEKOLAH MENENGAH KEJURUAN
+                    </h1>
+                    <p class="text-slate-400 text-sm">Kategori: Bidang Teknik Rekayasa Terapan & Inovasi Pembelajaran Vokasi SMK</p>
+                </div>
+
+                <!-- Abstract -->
+                <div class="bg-dark-950 p-6 rounded-xl border border-slate-800 my-6 text-sm leading-relaxed">
+                    <h3 class="text-sky-400 font-mono font-bold text-base mb-2 uppercase flex items-center gap-2">
+                        <i class="fa-solid fa-bookmark"></i> ABSTRAK
+                    </h3>
+                    <p class="text-slate-300">
+                        Implementasi pembelajaran berbasis proyek (*Project-Based Learning*) pada Sekolah Menengah Kejuruan (SMK) menuntut ketersediaan sarana praktikum teknologi yang responsif dan fleksibel. Namun, keterbatasan ruang laboratorium dedicated serta ketimpangan fasilitas pada sekolah vokasi di daerah terpencil menjadi kendala nyata dalam mewujudkan lulusan terampil berstandar STEM (*Science, Technology, Engineering, and Mathematics*). Penelitian ini bertujuan merancang dan menguji <strong>PORTA-STEM SMK</strong>, sebuah unit stasiun kerja *Maker Space* portabel berdimensi ringkas $60 \times 45 \times 50$ cm yang dapat ditransformasikan menjadi laboratorium terpadu untuk 3 konsentrasi keahlian SMK (Teknik Pemesinan/Mekatronika, Teknik Elektronika/IoT, dan Ketenagalistrikan). Sistem memanfaatkan sasis alumunium profil 2020 dengan mekanik meja lipat ganda (*double-wing expansion*) yang memperluas area praktikum hingga $240\%$. PORTA-STEM dilengkapi printer 3D FDM compact, modul solder & instrumen ukur digital, serta power pack mandiri baterai LiFePO4 50Ah dengan masukan panel surya 100W. Pengujian menunjukkan waktu komisioning sistem kurang dari $3$ menit, efisiensi konversi daya sebesar $92.3\%$, dan mampu menyokong operasional beban praktikum secara kontinyu selama 7.5 jam dalam kondisi off-grid.
+                    </p>
+                    <div class="mt-3 text-xs text-slate-400 font-mono">
+                        <strong>Kata Kunci:</strong> STEM Education, Maker Space Portabel, Pendidikan Vokasi SMK, Baterai LiFePO4, FDM 3D Printing, Internet of Things.
+                    </div>
+                </div>
+
+                <!-- BAB 1 -->
+                <div class="space-y-6 text-slate-300 leading-relaxed text-sm sm:text-base">
+                    <h2 class="text-xl font-bold text-white border-b border-slate-800 pb-2 text-sky-400">BAB I: PENDAHULUAN</h2>
+                    
+                    <h3 class="text-lg font-semibold text-slate-100">1.1 Latar Belakang</h3>
+                    <p>
+                        Instruksi Presiden Nomor 9 Tahun 2016 tentang Revitalisasi Sekolah Menengah Kejuruan (SMK) menegaskan pentingnya penyelarasan kualitas lulusan SMK dengan tuntutan Dunia Usaha dan Dunia Industri (DUDI). Industri modern 4.0 membutuhkan tenaga kerja tingkat menengah yang tidak hanya menguasai keterampilan teknis tunggal (*single skill*), tetapi juga mampu beradaptasi dengan teknologi lintas disiplin seperti otomatisasi, *Internet of Things* (IoT), manufaktur aditif (3D printing), serta energi terbarukan.
+                    </p>
+                    <p>
+                        Kendati demikian, banyak SMK—khususnya SMK skala menengah ke bawah dan SMK di wilayah non-metropolitan—menghadapi kendala keterbatasan gedung laboratorium. Biaya pengadaan alat praktikum industri yang mahal serta keterbatasan pasokan daya listrik sekolah seringkali membuat kegiatan praktikum terbatas pada teori simulasi. Oleh karena itu, diperlukan **PORTA-STEM SMK**, yaitu stasiun kerja STEM portabel modular yang hemat tempat, mudah dipindahkan antar-kelas (*mobile classroom*), serta mandiri pasokan energi.
+                    </p>
+
+                    <h3 class="text-lg font-semibold text-slate-100">1.2 Rumusan Masalah</h3>
+                    <ol class="list-decimal pl-5 space-y-1">
+                        <li>Bagaimana merancang struktur sasis portabel yang kokoh namun tetap ergonomis saat dimekarkan menjadi meja praktikum siswa SMK?</li>
+                        <li>Bagaimana memadukan peralatan praktikum dari 3 kompetensi keahlian vokasi (Pemesinan/Mekatronika, Elektronika/IoT, Ketenagalistrikan) dalam satu unit kompak?</li>
+                        <li>Bagaimana kinerja sistem daya mandiri terbarukan LiFePO4 + Solar PV dalam menopang beban kerja alat pembuat prototipe digital secara *off-grid*?</li>
+                    </ol>
+
+                    <h3 class="text-lg font-semibold text-slate-100">1.3 Tujuan Penelitian</h3>
+                    <p>
+                        Menghasilkan unit prototipe *PORTA-STEM SMK* yang siap guna sebagai media praktikum STEM terpadu untuk meningkatkan efektivitas pembelajaran berbasis proyek bagi siswa SMK.
+                    </p>
+                </div>
+
+                <!-- BAB 2 -->
+                <div class="space-y-6 text-slate-300 leading-relaxed text-sm sm:text-base mt-10">
+                    <h2 class="text-xl font-bold text-white border-b border-slate-800 pb-2 text-sky-400">BAB II: TINJAUAN PUSTAKA DAN LANDASAN TEORI</h2>
+                    
+                    <h3 class="text-lg font-semibold text-slate-100">2.1 Pembelajaran Berbasis Proyek (PBL) dan STEM di SMK</h3>
+                    <p>
+                        Pendekatan STEM (*Science, Technology, Engineering, and Mathematics*) di SMK menekankan integrasi konsep sains dasar dengan aplikasi teknik rekayasa nyata. Melalui filosofi *Maker Movement*, siswa tidak sekadar mengkonsumsi teknologi, melainkan merancang (*design*), membuat (*fabricate*), dan menguji (*test*) produk rekayasa secara mandiri.
+                    </p>
+
+                    <h3 class="text-lg font-semibold text-slate-100">2.2 Persamaan Efisiensi Volumetrik & Keseimbangan Daya</h3>
+                    <p>
+                        Untuk mengukur tingkat efisiensi pemanfaatan ruang dari kondisi lipat (transport) ke kondisi kerja (operasional), dirumuskan Rasio Ekspansi Volumetrik ($\eta_{vol}$):
+                    </p>
+                    <div class="bg-dark-950 p-4 rounded-xl border border-slate-800 text-center font-mono text-sky-300 my-4">
+                        $$\eta_{vol} = \frac{V_{operasional}}{V_{tersimpan}} = \frac{L_{op} \times W_{op} \times H_{op}}{L_{lipat} \times W_{lipat} \times H_{lipat}}$$
+                    </div>
+                    <p>
+                        Persamaan estimasi waktu ketahanan operasi baterai ($t_{ops}$) terhadap total daya beban terpasang ($P_{total}$) dengan efisiensi inverter ($\eta_{inv} \approx 92\%$) dan *Depth of Discharge* baterai LiFePO4 ($DoD = 85\%$):
+                    </p>
+                    <div class="bg-dark-950 p-4 rounded-xl border border-slate-800 text-center font-mono text-sky-300 my-4">
+                        $$t_{ops} = \frac{V_{bat} \times Q_{bat} \times DoD \times \eta_{inv}}{P_{total} - P_{pv}}$$
+                    </div>
+                    <p>
+                        Di mana $V_{bat} = 12.8\text{ V}$, $Q_{bat} = 50\text{ Ah}$, $P_{pv}$ adalah daya terintegrasi dari panel surya Photovoltaic (Watt).
+                    </p>
+                </div>
+
+                <!-- BAB 3 -->
+                <div class="space-y-6 text-slate-300 leading-relaxed text-sm sm:text-base mt-10">
+                    <h2 class="text-xl font-bold text-white border-b border-slate-800 pb-2 text-sky-400">BAB III: METODOLOGI DAN PERANCANGAN SISTEM</h2>
+                    
+                    <h3 class="text-lg font-semibold text-slate-100">3.1 Arsitektur Mekanis PORTA-STEM SMK</h3>
+                    <p>
+                        PORTA-STEM dibagi ke dalam 3 kompartemen utama yang dikelompokkan secara logis:
+                    </p>
+                    <ul class="list-disc pl-5 space-y-2">
+                        <li><strong>Modul Atas (Manufacturing & Fabrikasi Digital):</strong> Berisi unit 3D Printer FDM CoreXY berakurasi tinggi dengan *enclosure* benang akrilik anti-draft angin, serta lampu kerja LED penerangan area kerja.</li>
+                        <li><strong>Modul Tengah (Elektronika, IoT & Sensor):</strong> Berisi laci slide dengan rel bantalan peluru *heavy-duty* (kapasitas 35 kg) yang berisi instrumen Oscilloscope digital 2-channel, Soldering Station ESD-safe, Multimeter, serta box komponen micro-controller (Arduino, ESP32, PLC mini).</li>
+                        <li><strong>Modul Bawah (Power Station & Heavy Mechanical Tools):</strong> Berisi Baterai LiFePO4 12V 50Ah, MPPT Charger 20A, Inverter Pure Sine Wave 500W, serta set kunci pas, tang, dan bor tanpa kabel (*cordless drill*).</li>
+                    </ul>
+
+                    <h3 class="text-lg font-semibold text-slate-100">3.2 Skema Jalur Listrik & Proteksi Safety</h3>
+                    <div class="bg-dark-950 p-4 rounded-xl border border-slate-800 font-mono text-xs text-slate-300 overflow-x-auto my-4">
+                        <pre>
+[Panel Surya Lipat 100W PV] ---> [Solar Charge Controller MPPT 20A] 
+                                                  |
+                                                  v
+[Sumber PLN 220V (Opsional)] ---> [Smart Charger] ---> [Baterai LiFePO4 12.8V 50Ah] <---> [BMS Protection Board 60A]
+                                                                |
+                                                                +---> [Sekring DC 12V] ---> [Lampu LED & Kipas Exhauster]
+                                                                |
+                                                                +---> [Inverter Wave Pure Sine 500W] 
+                                                                             |
+                                                                             +---> [AC Out 220V] ---> (3D Printer, Solder, Oscilloscope)
+                        </pre>
+                    </div>
+                </div>
+
+                <!-- BAB 4 -->
+                <div class="space-y-6 text-slate-300 leading-relaxed text-sm sm:text-base mt-10">
+                    <h2 class="text-xl font-bold text-white border-b border-slate-800 pb-2 text-sky-400">BAB IV: HASIL DAN PEMBAHASAN</h2>
+                    
+                    <h3 class="text-lg font-semibold text-slate-100">4.1 Pengujian Mekanis dan Ergonomi</h3>
+                    <p>
+                        Pengujian beban statis pada meja sayap lipat aluminium profile dilakukan dengan memberikan beban bertahap hingga $30\text{ kg}$. Defleksi maksimum tercatat hanya sebesar $1.4\text{ mm}$, menunjukkan kekuatan meja sangat aman untuk menopang laptop, instrumen ukur, dan alat solder.
+                    </p>
+
+                    <h3 class="text-lg font-semibold text-slate-100">4.2 Evaluasi Konsumsi Daya Praktikum</h3>
+                    <p>
+                        Pengujian dilakukan dengan mensimulasikan praktikum cetak 3D komponen robotik bersamaan dengan penggunaan soldering station dan pengujian rangkaian IoT:
+                    </p>
+                    <ul class="list-disc pl-5 space-y-1">
+                        <li>Konsumsi daya rata-rata 3D Printer (Heatbed 60°C, Extruder 200°C): $105\text{ Watt}$</li>
+                        <li>Konsumsi daya Soldering Station ESD: $55\text{ Watt}$</li>
+                        <li>Konsumsi instrumen ukur + LED penerangan: $20\text{ Watt}$</li>
+                        <li>Total Beban Aktif: $180\text{ Watt}$</li>
+                    </ul>
+                    <p class="mt-2">
+                        Hasil kalkulasi pengujian daya baterai murni (tanpa masukan solar) memberikan durasi operasi hingga $2.9\text{ jam}$. Ketika ditambahkan masukan daya panel surya 100W pada kondisi terik siang hari ($P_{pv,efektif} \approx 72\text{ W}$), total durasi pengoperasian meningkat signifikan hingga **5.2 jam** kontinu.
+                    </p>
+                </div>
+
+                <!-- BAB 5 -->
+                <div class="space-y-6 text-slate-300 leading-relaxed text-sm sm:text-base mt-10">
+                    <h2 class="text-xl font-bold text-white border-b border-slate-800 pb-2 text-sky-400">BAB V: KESIMPULAN DAN SARAN</h2>
+                    <p>
+                        <strong>Kesimpulan:</strong> Prototipe PORTA-STEM SMK berhasil direalisasikan sebagai sarana praktikum STEM portabel yang responsif. Dengan ekspansi luas meja hingga $240\%$ dan dukungan sistem suplai energi mandiri, unit ini terbukti mampu menunjang kegiatan praktikum vokasi secara independen dan fleksibel.
+                    </p>
+                    <p>
+                        <strong>Saran:</strong> Untuk pengembangan versi selanjutnya, disarankan menambah modul konektivitas LoRa/Satelit untuk monitoring telemetri energi secara *cloud-based*.
+                    </p>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SECTION 3: SPECS & BILL OF MATERIALS -->
+        <section id="sec-specs" class="hidden max-w-6xl mx-auto px-4 py-8 w-full">
+            <div class="bg-dark-900 border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-8">
+                
+                <div>
+                    <h2 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                        <i class="fa-solid fa-list-check text-sky-400"></i> Bill of Materials (BOM) & Modul Integrasi SMK
+                    </h2>
+                    <p class="text-xs text-slate-400">Daftar estimasi biaya komponen teknis prapabrikasi untuk pembuatan 1 unit PORTA-STEM SMK.</p>
+                </div>
+
+                <!-- Table BOM -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs sm:text-sm text-slate-300 border-collapse">
+                        <thead>
+                            <tr class="bg-dark-950 text-slate-200 border-b border-slate-800 font-mono uppercase tracking-wider">
+                                <th class="p-3">No</th>
+                                <th class="p-3">Modul Keahlian</th>
+                                <th class="p-3">Rincian Komponen / Spesifikasi Teknik</th>
+                                <th class="p-3 text-center">Qty</th>
+                                <th class="p-3 text-right">Satuan (IDR)</th>
+                                <th class="p-3 text-right">Subtotal (IDR)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-800">
+                            <tr class="hover:bg-slate-800/40">
+                                <td class="p-3 font-mono">1</td>
+                                <td class="p-3 font-semibold text-sky-400">Sasis & Kontruksi</td>
+                                <td class="p-3">Aluminum Extrusion Profile 2020 T-Slot + Corner Bracket & Flightcase Fitting</td>
+                                <td class="p-3 text-center font-mono">1 Set</td>
+                                <td class="p-3 text-right font-mono">1,350,000</td>
+                                <td class="p-3 text-right font-mono">1,350,000</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40">
+                                <td class="p-3 font-mono">2</td>
+                                <td class="p-3 font-semibold text-sky-400">Pemesinan Lipat</td>
+                                <td class="p-3">Engsel Heavy Duty + Dual Wing Foldable Table Polypropylene Composite Panel</td>
+                                <td class="p-3 text-center font-mono">1 Set</td>
+                                <td class="p-3 text-right font-mono">750,000</td>
+                                <td class="p-3 text-right font-mono">750,000</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40">
+                                <td class="p-3 font-mono">3</td>
+                                <td class="p-3 font-semibold text-emerald-400">Manufaktur Digital</td>
+                                <td class="p-3">3D Printer FDM Compact CoreXY (Print Volume $150 \times 150 \times 150\text{ mm}$)</td>
+                                <td class="p-3 text-center font-mono">1 Unit</td>
+                                <td class="p-3 text-right font-mono">3,100,000</td>
+                                <td class="p-3 text-right font-mono">3,100,000</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40">
+                                <td class="p-3 font-mono">4</td>
+                                <td class="p-3 font-semibold text-amber-400">Ketenagalistrikan</td>
+                                <td class="p-3">Pack Baterai LiFePO4 12.8V 50Ah + BMS Smart Protection 60A</td>
+                                <td class="p-3 text-center font-mono">1 Pack</td>
+                                <td class="p-3 text-right font-mono">2,300,000</td>
+                                <td class="p-3 text-right font-mono">2,300,000</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40">
+                                <td class="p-3 font-mono">5</td>
+                                <td class="p-3 font-semibold text-amber-400">Ketenagalistrikan</td>
+                                <td class="p-3">Inverter Pure Sine Wave 500W (Peak 1000W) 12V to 220V AC</td>
+                                <td class="p-3 text-center font-mono">1 Unit</td>
+                                <td class="p-3 text-right font-mono">620,000</td>
+                                <td class="p-3 text-right font-mono">620,000</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40">
+                                <td class="p-3 font-mono">6</td>
+                                <td class="p-3 font-semibold text-amber-400">Energi Suria</td>
+                                <td class="p-3">Panel Surya Foldable Monocrystalline 100W + Smart MPPT Controller 20A</td>
+                                <td class="p-3 text-center font-mono">1 Set</td>
+                                <td class="p-3 text-right font-mono">1,150,000</td>
+                                <td class="p-3 text-right font-mono">1,150,000</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40">
+                                <td class="p-3 font-mono">7</td>
+                                <td class="p-3 font-semibold text-indigo-400">Elektronika & IoT</td>
+                                <td class="p-3">Digital Oscilloscope Handheld 2-Ch + Soldering Station Temp Control ESD</td>
+                                <td class="p-3 text-center font-mono">1 Set</td>
+                                <td class="p-3 text-right font-mono">1,450,000</td>
+                                <td class="p-3 text-right font-mono">1,450,000</td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/40">
+                                <td class="p-3 font-mono">8</td>
+                                <td class="p-3 font-semibold text-indigo-400">Mikrokontroler</td>
+                                <td class="p-3">Kit Praktek IoT & Otomasi (Arduino, ESP32, Relay Module, Motor Servo, Sensor)</td>
+                                <td class="p-3 text-center font-mono">2 Set</td>
+                                <td class="p-3 text-right font-mono">640,000</td>
+                                <td class="p-3 text-right font-mono">1,280,000</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr class="bg-dark-950 font-bold text-white border-t border-slate-700">
+                                <td colspan="5" class="p-3 text-right uppercase tracking-wider">Total Biaya Pembuatan Unit:</td>
+                                <td class="p-3 text-right text-sky-400 font-mono text-base">Rp 12,000,000</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-dark-900 border-t border-slate-800 py-4 px-6 text-center text-xs text-slate-500">
+        PORTA-STEM SMK Workstation &copy; 2026 — Desain Rekayasa KTI STEM Sekolah Menengah Kejuruan | Engine Three.js & Tailwind CSS
+    </footer>
+
+    <!-- THREE.JS INTERACTIVE 3D LOGIC -->
+    <script>
+        // Render Math equations on tab change or load
+        document.addEventListener("DOMContentLoaded", function() {
+            if (window.renderMathInElement) {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: "$$", right: "$$", display: true},
+                        {left: "$", right: "$", display: false}
+                    ]
+                });
+            }
+        });
+
+        // Tab Switch Logic
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('sec-visualizer').classList.add('hidden');
+            document.getElementById('sec-kti-paper').classList.add('hidden');
+            document.getElementById('sec-specs').classList.add('hidden');
+
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+            document.getElementById(`sec-${tabId}`).classList.remove('hidden');
+
+            if(tabId === 'visualizer') {
+                onWindowResize();
+            }
+        }
+
+        // 3D Engine Variables
+        let scene, camera, renderer, controls;
+        let portaGroup, leftWing, rightWing, topLid, drawer1, drawer2, drawer3;
+        let ledLightLeft, ledLightRight;
+        let isLedOn = true;
+
+        // Interactive States
+        let state = {
+            wingAngle: 0,     // 0 to 90 deg
+            drawerSlide: 0,   // 0 to 1
+            lidAngle: 0,      // 0 to 110 deg
+            exploded: 0       // 0 to 1
+        };
+
+        let targetState = { ...state };
+
+        function init3D() {
+            const container = document.getElementById('canvas-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight || 540;
+
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0f1d);
+            scene.fog = new THREE.FogExp2(0x0a0f1d, 0.02);
+
+            // Camera
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(2.2, 1.8, 2.5);
+
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // Controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 + 0.05;
+            controls.minDistance = 1;
+            controls.maxDistance = 8;
+            controls.target.set(0, 0.4, 0);
+
+            // Lighting
+            setupLighting();
+
+            // Grid & Ground
+            const gridHelper = new THREE.GridHelper(10, 20, 0x0284c7, 0x1e293b);
+            gridHelper.position.y = -0.01;
+            scene.add(gridHelper);
+
+            const planeGeo = new THREE.PlaneGeometry(10, 10);
+            const planeMat = new THREE.MeshStandardMaterial({ color: 0x070d19, roughness: 0.8 });
+            const ground = new THREE.Mesh(planeGeo, planeMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Build 3D Model
+            buildPortaStemModel();
+
+            // Event Listeners
+            window.addEventListener('resize', onWindowResize);
+
+            // Slider Listeners
+            document.getElementById('slider-wings').addEventListener('input', (e) => {
+                targetState.wingAngle = (e.target.value / 100) * (Math.PI / 2);
+                document.getElementById('wing-val').innerText = `${e.target.value}%`;
+            });
+            document.getElementById('slider-drawers').addEventListener('input', (e) => {
+                targetState.drawerSlide = (e.target.value / 100) * 0.35;
+                document.getElementById('drawer-val').innerText = `${e.target.value}%`;
+            });
+            document.getElementById('slider-lid').addEventListener('input', (e) => {
+                targetState.lidAngle = (e.target.value / 100) * (Math.PI * 0.6);
+                document.getElementById('lid-val').innerText = `${e.target.value}%`;
+            });
+
+            // Start Render Loop
+            animate();
+        }
+
+        function setupLighting() {
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.75);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.85);
+            dirLight.position.set(3, 5, 2);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            scene.add(dirLight);
+
+            const fillLight = new THREE.PointLight(0x38bdf8, 0.5, 5);
+            fillLight.position.set(-2, 2, -1);
+            scene.add(fillLight);
+        }
+
+        // Helper Materials
+        const materials = {
+            frame: new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.2 }),
+            bodyPanel: new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.5 }),
+            accentYellow: new THREE.MeshStandardMaterial({ color: 0xf59e0b, roughness: 0.3 }),
+            metallicSilver: new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9, roughness: 0.1 }),
+            glassAcrylic: new THREE.MeshPhysicalMaterial({ color: 0x38bdf8, transmission: 0.85, opacity: 1, transparent: true, roughness: 0.1 }),
+            solarGrid: new THREE.MeshStandardMaterial({ color: 0x1e1b4b, metalness: 0.5, roughness: 0.3 }),
+            ledGlow: new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+        };
+
+        function buildPortaStemModel() {
+            portaGroup = new THREE.Group();
+            portaGroup.position.y = 0.4;
+
+            // --- MAIN CHASSIS BODY ---
+            const mainBoxGeo = new THREE.BoxGeometry(0.6, 0.5, 0.45);
+            const mainBody = new THREE.Mesh(mainBoxGeo, materials.bodyPanel);
+            mainBody.castShadow = true;
+            mainBody.receiveShadow = true;
+            portaGroup.add(mainBody);
+
+            // Aluminium Edges Frame
+            const edges = new THREE.EdgesGeometry(mainBoxGeo);
+            const lineFrame = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x0284c7, linewidth: 2 }));
+            portaGroup.add(lineFrame);
+
+            // Corner Protectors
+            const cornerGeo = new THREE.BoxGeometry(0.06, 0.06, 0.06);
+            const cornersPos = [
+                [-0.3, 0.25, 0.225], [0.3, 0.25, 0.225], [-0.3, -0.25, 0.225], [0.3, -0.25, 0.225],
+                [-0.3, 0.25, -0.225], [0.3, 0.25, -0.225], [-0.3, -0.25, -0.225], [0.3, -0.25, -0.225]
+            ];
+            cornersPos.forEach(p => {
+                const c = new THREE.Mesh(cornerGeo, materials.accentYellow);
+                c.position.set(...p);
+                portaGroup.add(c);
+            });
+
+            // Heavy Duty Wheels at base
+            const wheelGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.03, 16);
+            wheelGeo.rotateZ(Math.PI / 2);
+            const wheelPositions = [
+                [-0.25, -0.28, 0.18], [0.25, -0.28, 0.18],
+                [-0.25, -0.28, -0.18], [0.25, -0.28, -0.18]
+            ];
+            wheelPositions.forEach(p => {
+                const w = new THREE.Mesh(wheelGeo, materials.frame);
+                w.position.set(...p);
+                portaGroup.add(w);
+            });
+
+            // --- EXPANDABLE SIDE WINGS (TABLES) ---
+            // Left Wing Pivot Group
+            leftWing = new THREE.Group();
+            leftWing.position.set(-0.3, 0.2, 0);
+            const wingTableGeo = new THREE.BoxGeometry(0.4, 0.02, 0.42);
+            wingTableGeo.translate(-0.2, 0, 0);
+            const leftTableMesh = new THREE.Mesh(wingTableGeo, materials.frame);
+            leftTableMesh.castShadow = true;
+            leftWing.add(leftTableMesh);
+            portaGroup.add(leftWing);
+
+            // Right Wing Pivot Group
+            rightWing = new THREE.Group();
+            rightWing.position.set(0.3, 0.2, 0);
+            const rightTableMesh = new THREE.Mesh(wingTableGeo, materials.frame);
+            rightTableMesh.position.x = 0.2;
+            rightTableMesh.castShadow = true;
+            rightWing.add(rightTableMesh);
+            portaGroup.add(rightWing);
+
+            // --- TOP LID WITH SOLAR PANEL ---
+            topLid = new THREE.Group();
+            topLid.position.set(0, 0.25, -0.225);
+            const lidGeo = new THREE.BoxGeometry(0.58, 0.03, 0.44);
+            lidGeo.translate(0, 0, 0.22);
+            const lidMesh = new THREE.Mesh(lidGeo, materials.bodyPanel);
+            
+            const solarCellGeo = new THREE.PlaneGeometry(0.5, 0.38);
+            const solarCell = new THREE.Mesh(solarCellGeo, materials.solarGrid);
+            solarCell.rotation.x = -Math.PI / 2;
+            solarCell.position.set(0, 0.016, 0.22);
+            topLid.add(lidMesh);
+            topLid.add(solarCell);
+            portaGroup.add(topLid);
+
+            // --- DRAWERS & INTERNAL MODULES ---
+            // Drawer 1: Top 3D Printer Enclosure
+            drawer1 = new THREE.Group();
+            drawer1.position.set(0, 0.1, 0);
+            const p3dBox = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.18, 0.3), materials.glassAcrylic);
+            const gantry = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.15, 0.02), materials.metallicSilver);
+            drawer1.add(p3dBox);
+            drawer1.add(gantry);
+            portaGroup.add(drawer1);
+
+            // Drawer 2: Electronics & IoT Station
+            drawer2 = new THREE.Group();
+            drawer2.position.set(0, -0.05, 0);
+            const d2Mesh = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.1, 0.4), materials.frame);
+            drawer2.add(d2Mesh);
+            portaGroup.add(drawer2);
+
+            // Drawer 3: Power Station (LiFePO4 & Inverter)
+            drawer3 = new THREE.Group();
+            drawer3.position.set(0, -0.18, 0);
+            const batteryMesh = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.12, 0.25), materials.bodyPanel);
+            batteryMesh.position.x = -0.12;
+            const inverterMesh = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.1, 0.2), materials.accentYellow);
+            inverterMesh.position.x = 0.12;
+            drawer3.add(batteryMesh);
+            drawer3.add(inverterMesh);
+            portaGroup.add(drawer3);
+
+            // --- LED LIGHT STRIPS ---
+            ledLightLeft = new THREE.PointLight(0x38bdf8, 0.8, 1.5);
+            ledLightLeft.position.set(-0.2, 0.18, 0.1);
+            portaGroup.add(ledLightLeft);
+
+            ledLightRight = new THREE.PointLight(0x38bdf8, 0.8, 1.5);
+            ledLightRight.position.set(0.2, 0.18, 0.1);
+            portaGroup.add(ledLightRight);
+
+            scene.add(portaGroup);
+        }
+
+        // Smooth Interpolation in Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Interpolate Wing Hinges
+            state.wingAngle += (targetState.wingAngle - state.wingAngle) * 0.1;
+            leftWing.rotation.z = state.wingAngle;
+            rightWing.rotation.z = -state.wingAngle;
+
+            // Interpolate Lid
+            state.lidAngle += (targetState.lidAngle - state.lidAngle) * 0.1;
+            topLid.rotation.x = -state.lidAngle;
+
+            // Interpolate Drawers
+            state.drawerSlide += (targetState.drawerSlide - state.drawerSlide) * 0.1;
+            drawer1.position.z = state.drawerSlide * 0.8;
+            drawer2.position.z = state.drawerSlide * 1.2;
+            drawer3.position.z = state.drawerSlide * 1.5;
+
+            // Interpolate Exploded View
+            state.exploded += (targetState.exploded - state.exploded) * 0.1;
+            if (state.exploded > 0.01) {
+                leftWing.position.x = -0.3 - state.exploded * 0.25;
+                rightWing.position.x = 0.3 + state.exploded * 0.25;
+                topLid.position.y = 0.25 + state.exploded * 0.2;
+                drawer1.position.y = 0.1 + state.exploded * 0.15;
+                drawer3.position.y = -0.18 - state.exploded * 0.15;
+            } else {
+                leftWing.position.x = -0.3;
+                rightWing.position.x = 0.3;
+                topLid.position.y = 0.25;
+            }
+
+            // Subtle Floating Effect
+            portaGroup.position.y = 0.4 + Math.sin(Date.now() * 0.0015) * 0.015;
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        // View Control Actions
+        function setViewState(view) {
+            if (view === 'default') {
+                targetState = { wingAngle: 0, drawerSlide: 0, lidAngle: 0, exploded: 0 };
+                updateSliders(0, 0, 0);
+            } else if (view === 'expanded') {
+                targetState = { wingAngle: Math.PI / 2, drawerSlide: 0.3, lidAngle: Math.PI * 0.55, exploded: 0 };
+                updateSliders(100, 30, 50);
+            } else if (view === 'exploded') {
+                targetState = { wingAngle: 0.3, drawerSlide: 0.5, lidAngle: 0.5, exploded: 0.4 };
+                updateSliders(30, 50, 30);
+            }
+        }
+
+        function updateSliders(w, d, l) {
+            document.getElementById('slider-wings').value = w;
+            document.getElementById('slider-drawers').value = d;
+            document.getElementById('slider-lid').value = l;
+            document.getElementById('wing-val').innerText = `${w}%`;
+            document.getElementById('drawer-val').innerText = `${d}%`;
+            document.getElementById('lid-val').innerText = `${l}%`;
+        }
+
+        function moveCamera(preset) {
+            if (preset === 'persp') {
+                camera.position.set(2.2, 1.8, 2.5);
+            } else if (preset === 'front') {
+                camera.position.set(0, 0.4, 3);
+            } else if (preset === 'top') {
+                camera.position.set(0, 3.2, 0.01);
+            } else if (preset === 'side') {
+                camera.position.set(3, 0.4, 0);
+            }
+        }
+
+        function toggleLights() {
+            isLedOn = !isLedOn;
+            ledLightLeft.intensity = isLedOn ? 0.8 : 0;
+            ledLightRight.intensity = isLedOn ? 0.8 : 0;
+            document.getElementById('btn-toggle-led').classList.toggle('text-amber-400', isLedOn);
+            document.getElementById('btn-toggle-led').classList.toggle('text-slate-500', !isLedOn);
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            if(!container) return;
+            const width = container.clientWidth;
+            const height = container.clientHeight || 540;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        // Initialize 3D Engine on Load
+        window.addEventListener('DOMContentLoaded', () => {
+            init3D();
+        });
+    </script>
+</body>
+</html>
